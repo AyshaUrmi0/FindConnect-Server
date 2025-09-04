@@ -251,6 +251,24 @@ async function run() {
         res.send(result);
       });
 
+app.get('/statistics', async (req, res) => {
+  try {
+    const totalItems = await allItemCollection.countDocuments();
+    const lostItems = await allItemCollection.countDocuments({ status: 'notFound' });
+    const foundItems = await allItemCollection.countDocuments({ status: 'found' });
+    const recoveredItems = await recoveredItemsCollection.countDocuments();
+    
+    res.json({
+      totalItems,
+      lostItems,
+      foundItems,
+      recoveredItems,
+      recoveryRate: totalItems > 0 ? Math.round((recoveredItems / totalItems) * 100) : 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
 
      
 
