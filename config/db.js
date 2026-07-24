@@ -1,27 +1,23 @@
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 
-let client = null;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-function getDb() {
-  if (!client) {
-    const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-    client = new MongoClient(uri, {
-      serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-      }
-    });
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
   }
-  return client.db('allItems');
-}
+});
 
-function getCollection(collectionName) {
-  return getDb().collection(collectionName);
+const db = client.db('allItems');
+
+function getCollection(name) {
+  return db.collection(name);
 }
 
 module.exports = {
-  getDb,
+  client,
   getCollection,
 };
