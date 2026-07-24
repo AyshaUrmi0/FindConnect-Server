@@ -33,25 +33,24 @@ const verifyToken = (req, res, next) => {
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 let cachedClient = null;
-let cachedDb = null;
 
 async function getDatabase() {
-  if (cachedDb) return cachedDb;
-
-  if (!cachedClient) {
-    cachedClient = new MongoClient(uri, {
-      serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-      },
-      connectTimeoutMS: 5000,
-      socketTimeoutMS: 10000,
-    });
-    await cachedClient.connect();
+  if (cachedClient && cachedClient.topology && cachedClient.topology.isConnected()) {
+    return cachedClient.db('allItems');
   }
-  cachedDb = cachedClient.db('allItems');
-  return cachedDb;
+
+  cachedClient = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  });
+
+  await cachedClient.connect();
+  return cachedClient.db('allItems');
 }
 
 // JWT
