@@ -11,23 +11,11 @@ const client = new MongoClient(uri, {
   }
 });
 
-let clientPromise;
-
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = client.connect();
-  }
-  clientPromise = global._mongoClientPromise;
-} else {
-  clientPromise = client.connect();
-}
-
 function getCollection(collectionName) {
   return client.db('allItems').collection(collectionName);
 }
 
 module.exports = {
   client,
-  clientPromise,
   getCollection,
 };
