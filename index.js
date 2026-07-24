@@ -32,24 +32,17 @@ const verifyToken = (req, res, next) => {
 
 let cachedClient = null;
 
-async function getDatabase() {
-  if (cachedClient && cachedClient.topology && cachedClient.topology.isConnected()) {
-    return cachedClient.db('allItems');
+function getDatabase() {
+  if (!cachedClient) {
+    const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+    cachedClient = new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      }
+    });
   }
-
-  const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-  cachedClient = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    },
-    connectTimeoutMS: 10000,
-    socketTimeoutMS: 45000,
-  });
-
-  await cachedClient.connect();
   return cachedClient.db('allItems');
 }
 
@@ -75,7 +68,7 @@ app.post('/logout', (req, res) => {
 // GET /items
 app.get("/items", async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const lostItems = await db.collection("Items").find({}).sort({ date: -1 }).limit(6).toArray();
     res.send(lostItems);
   } catch (err) {
@@ -86,7 +79,7 @@ app.get("/items", async (req, res) => {
 // GET /allItems (with 10-item pagination support ?page=1&limit=10)
 app.get("/allItems", async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const collection = db.collection("Items");
     const page = parseInt(req.query.page);
     const limit = parseInt(req.query.limit) || 10;
@@ -107,7 +100,7 @@ app.get("/allItems", async (req, res) => {
 
 app.get('/items/:id', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const id = req.params.id;
     const result = await db.collection("Items").findOne({ _id: new ObjectId(id) });
     res.send(result);
@@ -119,7 +112,7 @@ app.get('/items/:id', async (req, res) => {
 // GET & POST /recoveredItems (with 10-item pagination support ?page=1&limit=10)
 app.post('/recoveredItems', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const result = await db.collection("allRecoveredItems").insertOne(req.body);
     res.status(201).send(result); 
   } catch (error) {
@@ -129,7 +122,7 @@ app.post('/recoveredItems', async (req, res) => {
 
 app.put('/recoveredItems/:id', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const id = req.params.id;
     const result = await db.collection("Items").updateOne({ _id: new ObjectId(id) }, { $set: { status: "recovered" } });
     res.send(result);
@@ -140,7 +133,7 @@ app.put('/recoveredItems/:id', async (req, res) => {
 
 app.get('/recoveredItems', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const collection = db.collection("allRecoveredItems");
     const email = req.query.email;
     const page = parseInt(req.query.page);
@@ -163,7 +156,7 @@ app.get('/recoveredItems', async (req, res) => {
 
 app.patch('/status/:id', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const id = req.params.id;
     const result = await db.collection("Items").updateOne({ _id: new ObjectId(id) }, { $set: { status: 'recovered' } });
     res.send(result);
@@ -174,7 +167,7 @@ app.patch('/status/:id', async (req, res) => {
 
 app.post('/addedItems', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const itemData = req.body;
     const result = await db.collection("Items").insertOne(itemData);
     await db.collection("addedItems").insertOne(itemData);
@@ -186,7 +179,7 @@ app.post('/addedItems', async (req, res) => {
 
 app.get('/addedItems', verifyToken, async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const email = req.query.email;
     if (req.user.email !== email) {
       return res.status(403).send('forbidden');
@@ -200,7 +193,7 @@ app.get('/addedItems', verifyToken, async (req, res) => {
 
 app.get('/addedItems/:id', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const id = req.params.id;
     const addedItem = await db.collection("addedItems").findOne({ _id: new ObjectId(id) });
     res.send(addedItem);
@@ -211,7 +204,7 @@ app.get('/addedItems/:id', async (req, res) => {
 
 app.put('/addedItems/:id', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const id = req.params.id; 
     const updatedItem = req.body; 
     const query = { _id: new ObjectId(id) }; 
@@ -241,7 +234,7 @@ app.put('/addedItems/:id', async (req, res) => {
 
 app.delete('/addedItems/:id', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const id = req.params.id;
     const result = await db.collection("addedItems").deleteOne({ _id: new ObjectId(id) });
     res.send(result);
@@ -252,7 +245,7 @@ app.delete('/addedItems/:id', async (req, res) => {
 
 app.get('/statistics', async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
     const totalItems = await db.collection("Items").countDocuments();
     const lostItems = await db.collection("Items").countDocuments({ status: 'notFound' });
     const foundItems = await db.collection("Items").countDocuments({ status: 'found' });
