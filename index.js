@@ -32,7 +32,12 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const rawUser = (process.env.DB_USER || '').trim();
+const rawPass = (process.env.DB_PASS || '').trim();
+const user = rawUser.includes('%') ? rawUser : encodeURIComponent(rawUser);
+const pass = rawPass.includes('%') ? rawPass : encodeURIComponent(rawPass);
+
+const uri = `mongodb+srv://${user}:${pass}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 let client;
 let clientPromise;
