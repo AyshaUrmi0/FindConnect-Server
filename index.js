@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
-const { connectDB } = require('./config/db');
+const { clientPromise } = require('./config/db');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes');
@@ -31,8 +31,16 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json());
 
-// Initialize Database Connection
-connectDB().catch(console.dir);
+// Ensure MongoDB client connection before routes
+app.use(async (req, res, next) => {
+  try {
+    await clientPromise;
+    next();
+  } catch (error) {
+    console.error('MongoDB Connection Error:', error);
+    res.status(500).send({ message: 'Database Connection Error', error: error.message });
+  }
+});
 
 // Register Modular Routers
 app.use('/', authRoutes);

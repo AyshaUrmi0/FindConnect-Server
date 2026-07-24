@@ -11,26 +11,23 @@ const client = new MongoClient(uri, {
   }
 });
 
-let dbInstance = null;
+let clientPromise;
 
-async function connectDB() {
-  if (!dbInstance) {
-    await client.connect();
-    dbInstance = client.db('allItems');
-    console.log('Successfully connected to MongoDB!');
+if (process.env.NODE_ENV === 'development') {
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = client.connect();
   }
-  return dbInstance;
+  clientPromise = global._mongoClientPromise;
+} else {
+  clientPromise = client.connect();
 }
 
 function getCollection(collectionName) {
-  if (!dbInstance) {
-    dbInstance = client.db('allItems');
-  }
-  return dbInstance.collection(collectionName);
+  return client.db('allItems').collection(collectionName);
 }
 
 module.exports = {
   client,
-  connectDB,
+  clientPromise,
   getCollection,
 };
