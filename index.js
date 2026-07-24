@@ -30,13 +30,15 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 let client = null;
 let clientPromise = null;
 
 function getClientPromise() {
   if (!clientPromise) {
+    const user = process.env.DB_USER ? process.env.DB_USER.trim() : '';
+    const pass = process.env.DB_PASS ? process.env.DB_PASS.trim() : '';
+    const uri = `mongodb+srv://${user}:${pass}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+    
     client = new MongoClient(uri, {
       serverApi: {
         version: ServerApiVersion.v1,
@@ -274,7 +276,17 @@ app.get('/statistics', async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Server is running..........");
+  const dbUser = process.env.DB_USER ? process.env.DB_USER.trim() : 'MISSING';
+  const dbPass = process.env.DB_PASS ? process.env.DB_PASS.trim() : 'MISSING';
+  res.json({
+    message: "Server is running..........",
+    envStatus: {
+      dbUserSet: dbUser !== 'MISSING',
+      dbPassSet: dbPass !== 'MISSING',
+      dbUserLength: dbUser.length,
+      dbPassLength: dbPass.length
+    }
+  });
 });
 
 if (process.env.NODE_ENV !== 'production') {
