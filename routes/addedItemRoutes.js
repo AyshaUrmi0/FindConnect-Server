@@ -1,21 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { ObjectId } = require('mongodb');
-const { getCollection } = require('../config/db');
+const { collections } = require('../config/db');
 const verifyToken = require('../middleware/verifyToken');
 
 // POST /addedItems - Submit new item form
 router.post('/addedItems', async (req, res) => {
   try {
     const itemData = req.body;
-    const itemsCollection = getCollection('Items');
-    const addedItemsCollection = getCollection('addedItems');
-
-    const result = await itemsCollection.insertOne(itemData);
-    await addedItemsCollection.insertOne(itemData);
+    const result = await collections.items.insertOne(itemData);
+    await collections.added.insertOne(itemData);
     res.status(201).send(result);
   } catch (error) {
-    res.status(500).send({ message: 'Error adding item', error });
+    res.status(500).send({ message: 'Error adding item', error: error.message });
   }
 });
 
@@ -26,11 +23,10 @@ router.get('/addedItems', verifyToken, async (req, res) => {
     if (req.user.email !== email) {
       return res.status(403).send('forbidden');
     }
-    const addedItemsCollection = getCollection('addedItems');
-    const addedItems = await addedItemsCollection.find({ 'contactInfo.email': email }).toArray();
+    const addedItems = await collections.added.find({ 'contactInfo.email': email }).toArray();
     res.send(addedItems);
   } catch (error) {
-    res.status(500).send({ message: 'Error fetching user items', error });
+    res.status(500).send({ message: 'Error fetching user items', error: error.message });
   }
 });
 
@@ -38,8 +34,7 @@ router.get('/addedItems', verifyToken, async (req, res) => {
 router.get('/addedItems/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const addedItemsCollection = getCollection('addedItems');
-    const addedItem = await addedItemsCollection.findOne({ _id: new ObjectId(id) });
+    const addedItem = await collections.added.findOne({ _id: new ObjectId(id) });
     if (!addedItem) {
       return res.status(404).send({ error: 'Item not found' });
     }
@@ -54,7 +49,6 @@ router.put('/addedItems/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const updatedItem = req.body;
-    const addedItemsCollection = getCollection('addedItems');
 
     const query = { _id: new ObjectId(id) };
     const updateDoc = {
@@ -68,7 +62,7 @@ router.put('/addedItems/:id', async (req, res) => {
       },
     };
 
-    const result = await addedItemsCollection.updateOne(query, updateDoc);
+    const result = await collections.added.updateOne(query, updateDoc);
 
     if (result.modifiedCount === 1) {
       res.status(200).send({ message: 'Item updated successfully!' });
@@ -87,8 +81,7 @@ router.put('/addedItems/:id', async (req, res) => {
 router.delete('/addedItems/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const addedItemsCollection = getCollection('addedItems');
-    const result = await addedItemsCollection.deleteOne({ _id: new ObjectId(id) });
+    const result = await collections.added.deleteOne({ _id: new ObjectId(id) });
     res.send(result);
   } catch (error) {
     res.status(500).send({ error: 'Failed to delete item' });

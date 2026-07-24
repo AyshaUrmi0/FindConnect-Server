@@ -13,11 +13,14 @@ const client = new MongoClient(uri, {
 
 const db = client.db('allItems');
 
-function getCollection(name) {
-  return db.collection(name);
-}
+const collections = {
+  items: db.collection('Items'),
+  recovered: db.collection('allRecoveredItems'),
+  added: db.collection('addedItems'),
+};
 
 module.exports = {
   client,
-  getCollection,
+  db,
+  collections,
 };
