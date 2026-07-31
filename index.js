@@ -17,9 +17,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-const bodyParser = require('body-parser');
 app.use(cookieParser());
-app.use(bodyParser.json());
 
 const verifyToken = (req, res, next) => {
   const token = req.cookies?.token;
