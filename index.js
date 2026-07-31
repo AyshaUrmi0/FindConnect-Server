@@ -37,18 +37,22 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-const rawUser = (process.env.DB_USER || '').trim();
-const rawPass = (process.env.DB_PASS || '').trim();
-const user = rawUser.includes('%') ? rawUser : encodeURIComponent(rawUser);
-const pass = rawPass.includes('%') ? rawPass : encodeURIComponent(rawPass);
-
-const uri = `mongodb+srv://${user}:${pass}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 let client;
 let clientPromise;
 
 function getClientPromise() {
+  const rawUser = (process.env.DB_USER || '').trim();
+  const rawPass = (process.env.DB_PASS || '').trim();
+
+  if (!rawUser || !rawPass) {
+    throw new Error("DB_USER or DB_PASS environment variables are missing on the server.");
+  }
+
   if (!clientPromise) {
+    const user = rawUser.includes('%') ? rawUser : encodeURIComponent(rawUser);
+    const pass = rawPass.includes('%') ? rawPass : encodeURIComponent(rawPass);
+    const uri = `mongodb+srv://${user}:${pass}@cluster0.sth4y.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
     client = new MongoClient(uri, {
       serverApi: {
         version: ServerApiVersion.v1,
@@ -58,7 +62,10 @@ function getClientPromise() {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
     });
-    clientPromise = client.connect();
+    clientPromise = client.connect().catch((err) => {
+      clientPromise = null;
+      throw err;
+    });
   }
   return clientPromise;
 }
