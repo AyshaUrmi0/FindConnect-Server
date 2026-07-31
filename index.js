@@ -25,7 +25,12 @@ const verifyToken = (req, res, next) => {
   const token = req.cookies?.token;
   if (!token) return res.status(401).send('Access Denied');
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return res.status(500).send('JWT_SECRET missing on server');
+  }
+
+  jwt.verify(token, secret, (err, decoded) => {
     if (err) return res.status(401).send('Invalid Token');
     req.user = decoded;
     next();
@@ -65,20 +70,39 @@ async function getCollection(collectionName) {
 
 // JWT
 app.post('/jwt', (req, res) => {
-  const user = req.body;
-  const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '10h' });
-  res.cookie('token', token, { 
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-  }).send({ success: true });
+  try {
+    const user = req.body;
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      console.error("JWT_SECRET environment variable is missing!");
+      return res.status(500).send({ 
+        success: false, 
+        message: "JWT_SECRET environment variable is missing on server." 
+      });
+    }
+
+    if (!user || typeof user !== 'object') {
+      return res.status(400).send({ success: false, message: "Invalid user payload" });
+    }
+
+    const token = jwt.sign(user, secret, { expiresIn: '10h' });
+    res.cookie('token', token, { 
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    }).send({ success: true });
+  } catch (error) {
+    console.error("JWT creation error:", error);
+    res.status(500).send({ success: false, message: "Error signing JWT token", error: error.message });
+  }
 });
 
 app.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    secure: true,
+    sameSite: "none",
   }).send({ success: true });
 });
 
